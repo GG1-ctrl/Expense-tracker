@@ -7,6 +7,12 @@ function App() {
   const [description, setDescription] = useState("");
   const [transactions, setTransactions] = useState([]);
 
+  const [type, setType] = useState("expense");
+
+  const [tranDate, setTranDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
   useEffect(() => {
     loadTransactions();
   }, []);
@@ -23,13 +29,17 @@ function App() {
   }
 
   async function saveTransaction() {
+    if (!category || !amount) {
+      alert("กรุณากรอกข้อมูลให้ครบ");
+      return;
+    }
+
     const { error } = await supabase
       .from("transactions")
       .insert([
         {
-          tran_date: new Date()
-            .toISOString()
-            .split("T")[0],
+          tran_date: tranDate,
+          type: type,
           category: category,
           amount: Number(amount),
           description: description,
@@ -46,6 +56,11 @@ function App() {
     setCategory("");
     setAmount("");
     setDescription("");
+    setType("expense");
+
+    setTranDate(
+      new Date().toISOString().split("T")[0]
+    );
 
     loadTransactions();
   }
@@ -64,10 +79,20 @@ function App() {
     loadTransactions();
   }
 
-  const totalExpense = transactions.reduce(
-    (sum, item) => sum + Number(item.amount),
-    0
-  );
+  const totalIncome = transactions
+    .filter((item) => item.type === "income")
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+
+  const totalExpense = transactions
+    .filter(
+      (item) =>
+        item.type === "expense" ||
+        item.type === null
+    )
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+
+  const balance =
+    totalIncome - totalExpense;
 
   return (
     <div
@@ -80,12 +105,63 @@ function App() {
       <h1>Expense Tracker</h1>
 
       <h2>
-        ยอดรวมรายจ่าย: {totalExpense.toFixed(2)} บาท
+        รายรับ: {totalIncome.toFixed(2)} บาท
       </h2>
+
+      <h2>
+        รายจ่าย: {totalExpense.toFixed(2)} บาท
+      </h2>
+
+      <h2>
+        คงเหลือ: {balance.toFixed(2)} บาท
+      </h2>
+
+      <hr />
+
+      <div>
+        <label>ประเภท</label>
+
+        <br />
+
+        <select
+          value={type}
+          onChange={(e) =>
+            setType(e.target.value)
+          }
+        >
+          <option value="expense">
+            รายจ่าย
+          </option>
+
+          <option value="income">
+            รายรับ
+          </option>
+        </select>
+      </div>
+
+      <br />
+
+      <div>
+        <label>วันที่</label>
+
+        <br />
+
+        <input
+          type="date"
+          value={tranDate}
+          onChange={(e) =>
+            setTranDate(e.target.value)
+          }
+        />
+      </div>
+
+      <br />
 
       <div>
         <label>หมวดหมู่</label>
+
         <br />
+
         <input
           value={category}
           onChange={(e) =>
@@ -98,7 +174,9 @@ function App() {
 
       <div>
         <label>จำนวนเงิน</label>
+
         <br />
+
         <input
           type="number"
           value={amount}
@@ -112,7 +190,9 @@ function App() {
 
       <div>
         <label>รายละเอียด</label>
+
         <br />
+
         <input
           value={description}
           onChange={(e) =>
@@ -145,11 +225,23 @@ function App() {
             }}
           >
             <div>
-              <strong>{item.category}</strong>
+              <strong>
+                {item.category}
+              </strong>
             </div>
 
             <div>
-              {Number(item.amount).toFixed(2)} บาท
+              ประเภท :{" "}
+              {item.type === "income"
+                ? "รายรับ"
+                : "รายจ่าย"}
+            </div>
+
+            <div>
+              {Number(
+                item.amount
+              ).toFixed(2)}{" "}
+              บาท
             </div>
 
             <div>
@@ -157,14 +249,16 @@ function App() {
             </div>
 
             <div>
-              วันที่: {item.tran_date}
+              วันที่ : {item.tran_date}
             </div>
 
             <br />
 
             <button
               onClick={() =>
-                deleteTransaction(item.id)
+                deleteTransaction(
+                  item.id
+                )
               }
             >
               ลบ
